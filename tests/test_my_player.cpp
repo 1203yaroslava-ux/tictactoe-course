@@ -1,37 +1,64 @@
-#include "player/my_observer.hpp"
 #include "player/my_player.hpp"
-
-
-#include <cstdio>
-#include <cstdlib>
+#include "core/game.hpp"
 #include <iostream>
-#include <iomanip>
 
-int main(int argc, char *argv[]) {
-  std::cout << "Hello!\n";
-  if (argc >= 2) {
-    std::srand(atoi(argv[1]));
-  }
+using namespace ttt;
 
-  ttt::game::State::Opts opts;
-  opts.rows = opts.cols = 20;
-  opts.win_len = 20;
-  opts.max_moves = 0;
+void assert_move(const char* name, game::Point expected, game::Point actual) {
+    std::cout << "[TEST] " << name << ": ";
+    if (expected.x == actual.x && expected.y == actual.y)
+        std::cout << "PASSED\n";
+    else
+        std::cout << "FAILED (expected " << expected.x << "," << expected.y
+                  << " got " << actual.x << "," << actual.y << ")\n";
+}
 
-  auto field_initializer = ttt::game::RandomObstaclesFI(0.75, 50, 1);
+int main() {
+    std::cout << "--- MyPlayer Unit Tests ---\n";
 
-  ttt::my_player::MyPlayer p1("p1");
-  ttt::my_player::MyPlayer p2("p2");
-  ttt::my_player::ConsoleWriter obs;
+    // Тест 1: победа
+    {
+        game::State::Opts opts;
+        opts.rows = 3;
+        opts.cols = 3;
+        opts.win_len = 3;
+        opts.max_moves = 0;
+        
+        game::State state(opts);
+        state.process_move(game::Sign::X, 0, 0);
+        state.process_move(game::Sign::O, 0, 1);
+        state.process_move(game::Sign::X, 1, 0);
 
-  ttt::game::Game game(opts, &field_initializer);
-  game.add_player(ttt::game::Sign::X, &p1);
-  game.add_player(ttt::game::Sign::O, &p2);
-  game.add_observer(&obs);
+        my_player::MyPlayer p("Test");
+        p.set_sign(game::Sign::X);
+        
+        game::Point expected = {2, 0};
+        game::Point actual = p.make_move(state);
+        assert_move("Winning move", expected, actual);
+    }
 
-  obs.print_game_state(game.get_state());
-  while (game.process() == ttt::game::MoveResult::OK) {
-    obs.print_game_state(game.get_state());
-  }
-  obs.print_game_state(game.get_state());
+    // Тест 2: блокировка
+    {
+        game::State::Opts opts;
+        opts.rows = 3;
+        opts.cols = 3;
+        opts.win_len = 3;
+        opts.max_moves = 0;
+        
+        game::State state(opts);
+        state.process_move(game::Sign::X, 0, 0);
+        state.process_move(game::Sign::O, 0, 1);
+        state.process_move(game::Sign::X, 2, 2);
+        state.process_move(game::Sign::O, 1, 1);
+
+        my_player::MyPlayer p("Test");
+        p.set_sign(game::Sign::X);
+        
+        game::Point expected = {2, 1};
+        game::Point actual = p.make_move(state);
+        assert_move("Block opponent", expected, actual);
+    }
+
+    std::cout << "\n--- All tests done ---\n";
+    return 0;
 }
