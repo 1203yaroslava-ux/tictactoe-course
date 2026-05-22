@@ -8,41 +8,41 @@
 using namespace ttt;
 
 int main() {
-    game::State::Opts opts;
-    opts.rows = 10;
-    opts.cols = 10;
-    opts.win_len = 5;
-    opts.max_moves = 0;
+    game::State::Opts settings;
+    settings.rows = 10;
+    settings.cols = 10;
+    settings.win_len = 5;
+    settings.max_moves = 0;
 
-    game::Game game(opts);
+    game::Game match(settings);
 
-    auto my_bot = new my_player::MyPlayer("MySmartBot");
-    auto enemy_bot = baseline::get_easy_player("EasyBot");
-    auto logger = new my_player::ConsoleWriter();
+    auto first_player = new my_player::MyPlayer("SmartAgent");
+    auto second_player = baseline::get_easy_player("RandomBot");
+    auto display = new my_player::ConsoleWriter();
 
-    game.add_observer(logger);
-    game.add_player(game::Sign::X, my_bot);
-    game.add_player(game::Sign::O, enemy_bot);
+    match.add_observer(display);
+    match.add_player(game::Sign::X, first_player);
+    match.add_player(game::Sign::O, second_player);
 
-    while (game.get_state().get_status() != game::Status::ENDED) {
-        game::Sign current = game.get_state().get_current_player();
+    while (match.get_state().get_status() != game::Status::ENDED) {
+        game::Sign turn = match.get_state().get_current_player();
         
-        auto start = std::chrono::high_resolution_clock::now();
-        game::MoveResult result = game.process();
-        auto end = std::chrono::high_resolution_clock::now();
+        auto start_time = std::chrono::high_resolution_clock::now();
+        game::MoveResult outcome = match.process();
+        auto end_time = std::chrono::high_resolution_clock::now();
 
-        double elapsed = std::chrono::duration<double, std::milli>(end - start).count();
-        std::cout << "Player " << (current == game::Sign::X ? "X" : "O")
-                  << " move time: " << elapsed << " ms\n";
+        double duration = std::chrono::duration<double, std::milli>(end_time - start_time).count();
+        std::cout << "Turn " << (turn == game::Sign::X ? "X" : "O")
+                  << " completed in " << duration << " ms\n";
 
-        my_player::ConsoleWriter::print_game_state(game.get_state());
+        my_player::ConsoleWriter::print_game_state(match.get_state());
 
-        if (game::is_dq(result)) break;
+        if (game::is_dq(outcome)) break;
     }
 
-    delete my_bot;
-    delete logger;
-    delete enemy_bot;
+    delete first_player;
+    delete display;
+    delete second_player;
     
     return 0;
 }

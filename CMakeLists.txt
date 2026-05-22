@@ -43,5 +43,5 @@ target_link_libraries(tttplayer ${TTTCORE_LIB})
 enable_testing()
 add_subdirectory("tests")
 
-add_executable(play_game main.cpp)
-target_link_libraries(play_game tttplayer tttcore)
+add_executable(run_game main.cpp)
+target_link_libraries(run_game tttplayer tttcore)

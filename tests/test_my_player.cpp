@@ -1,109 +1,105 @@
 #include "player/my_player.hpp"
 #include "core/game.hpp"
 #include <iostream>
-#include <cmath>
 
 using namespace ttt;
 
-bool compare_points(game::Point a, game::Point b) {
-    return a.x == b.x && a.y == b.y;
+bool check_coords(game::Point a, game::Point b) {
+    return (a.x == b.x) && (a.y == b.y);
 }
 
-void test_result(const char* name, bool success) {
-    std::cout << "Test " << name << ": ";
-    if (success) {
-        std::cout << "PASSED\n";
-    } else {
-        std::cout << "FAILED\n";
-    }
+void report(const char* case_name, bool status) {
+    std::cout << "Case " << case_name << ": ";
+    std::cout << (status ? "OK" : "FAIL") << std::endl;
 }
 
 int main() {
-    std::cout << "MyPlayer Unit Tests\n";
+    std::cout << "\nMyPlayer Verification\n\n";
 
-    // Test 1: win in one move
+    // Scenario A: Direct win opportunity
     {
-        game::State::Opts opts;
-        opts.rows = 3;
-        opts.cols = 3;
-        opts.win_len = 3;
-        opts.max_moves = 0;
+        game::State::Opts config;
+        config.rows = 3;
+        config.cols = 3;
+        config.win_len = 3;
+        config.max_moves = 0;
         
-        game::State state(opts);
-        state.process_move(game::Sign::X, 0, 0);
-        state.process_move(game::Sign::O, 0, 1);
-        state.process_move(game::Sign::X, 1, 0);
+        game::State field(config);
+        field.process_move(game::Sign::X, 0, 0);
+        field.process_move(game::Sign::O, 0, 1);
+        field.process_move(game::Sign::X, 1, 0);
 
-        my_player::MyPlayer bot("TestBot");
-        bot.set_sign(game::Sign::X);
+        my_player::MyPlayer agent("Verifier");
+        agent.set_sign(game::Sign::X);
         
-        game::Point expected = {2, 0};
-        game::Point actual = bot.make_move(state);
-        test_result("winning_move", compare_points(expected, actual));
+        game::Point answer = {2, 0};
+        game::Point decision = agent.make_move(field);
+        report("win_in_one", check_coords(answer, decision));
     }
 
-    // Test 2: block opponent win
+    // Scenario B: Prevent opponent victory
     {
-        game::State::Opts opts;
-        opts.rows = 3;
-        opts.cols = 3;
-        opts.win_len = 3;
-        opts.max_moves = 0;
+        game::State::Opts config;
+        config.rows = 3;
+        config.cols = 3;
+        config.win_len = 3;
+        config.max_moves = 0;
         
-        game::State state(opts);
-        state.process_move(game::Sign::X, 0, 0);
-        state.process_move(game::Sign::O, 0, 1);
-        state.process_move(game::Sign::X, 2, 2);
-        state.process_move(game::Sign::O, 1, 1);
+        game::State field(config);
+        field.process_move(game::Sign::X, 0, 0);
+        field.process_move(game::Sign::O, 0, 1);
+        field.process_move(game::Sign::X, 2, 2);
+        field.process_move(game::Sign::O, 1, 1);
 
-        my_player::MyPlayer bot("TestBot");
-        bot.set_sign(game::Sign::X);
+        my_player::MyPlayer agent("Verifier");
+        agent.set_sign(game::Sign::X);
         
-        game::Point expected = {2, 1};
-        game::Point actual = bot.make_move(state);
-        test_result("block_opponent", compare_points(expected, actual));
+        game::Point answer = {2, 1};
+        game::Point decision = agent.make_move(field);
+        report("block_threat", check_coords(answer, decision));
     }
 
-    // Test 3: bot extends its own line
+    // Scenario C: Build own formation
     {
-        game::State::Opts opts;
-        opts.rows = 5;
-        opts.cols = 5;
-        opts.win_len = 5;
-        opts.max_moves = 0;
+        game::State::Opts config;
+        config.rows = 5;
+        config.cols = 5;
+        config.win_len = 5;
+        config.max_moves = 0;
         
-        game::State state(opts);
-        state.process_move(game::Sign::X, 0, 0);
-        state.process_move(game::Sign::O, 0, 1);
-        state.process_move(game::Sign::X, 1, 0);
-        state.process_move(game::Sign::O, 3, 0);
+        game::State field(config);
+        field.process_move(game::Sign::X, 0, 0);
+        field.process_move(game::Sign::O, 0, 1);
+        field.process_move(game::Sign::X, 1, 0);
+        field.process_move(game::Sign::O, 3, 0);
         
-        my_player::MyPlayer bot("TestBot");
-        bot.set_sign(game::Sign::X);
+        my_player::MyPlayer agent("Verifier");
+        agent.set_sign(game::Sign::X);
         
-        game::Point move = bot.make_move(state);
-        bool extends_line = (move.x == 2 && move.y == 0);
-        test_result("extend_own_line", extends_line);
+        game::Point movement = agent.make_move(field);
+        bool correct = (movement.x == 2 && movement.y == 0);
+        report("extend_line", correct);
     }
 
-    // Test 4: bot chooses any valid first move (not failing)
+    // Scenario D: Opening move
     {
-        game::State::Opts opts;
-        opts.rows = 5;
-        opts.cols = 5;
-        opts.win_len = 4;
-        opts.max_moves = 0;
+        game::State::Opts config;
+        config.rows = 5;
+        config.cols = 5;
+        config.win_len = 4;
+        config.max_moves = 0;
         
-        game::State state(opts);
+        game::State field(config);
         
-        my_player::MyPlayer bot("TestBot");
-        bot.set_sign(game::Sign::X);
+        my_player::MyPlayer agent("Verifier");
+        agent.set_sign(game::Sign::X);
         
-        game::Point move = bot.make_move(state);
-        bool valid_move = (move.x >= 0 && move.x < 5 && move.y >= 0 && move.y < 5);
-        test_result("valid_first_move", valid_move);
+        game::Point movement = agent.make_move(field);
+        bool valid = (movement.x >= 0 && movement.x < 5 && 
+                      movement.y >= 0 && movement.y < 5);
+        report("first_move_valid", valid);
     }
 
-    std::cout << "\nTests completed\n";
+    std::cout << "\nVerification Complete\n";
     return 0;
 }
