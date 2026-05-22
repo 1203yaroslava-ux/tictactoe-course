@@ -2,77 +2,93 @@
 
 namespace ttt::my_player {
 
-MyPlayer::MyPlayer(const char* name) : m_name(name) {}
+MyPlayer::MyPlayer(const char* id) : player_id(id) {}
 
-void MyPlayer::set_sign(Sign sign) { m_sign = sign; }
-
-const char* MyPlayer::get_name() const { return m_name; }
-
-int MyPlayer::count_in_dir(const State& state, int x, int y, int dx, int dy, Sign sign) const {
-    int count = 0;
-    int win_len = state.get_opts().win_len;
-    for (int i = 1; i < win_len; ++i) {
-        int nx = x + dx * i;
-        int ny = y + dy * i;
-        if (nx < 0 || ny < 0 || nx >= state.get_opts().cols || ny >= state.get_opts().rows)
-            break;
-        if (state.get_value(nx, ny) == sign)
-            ++count;
-        else
-            break;
-    }
-    return count;
+void MyPlayer::set_sign(Sign sign) { 
+    player_sign = sign; 
 }
 
-int MyPlayer::evaluate_cell(const State& state, int x, int y, Sign my_sign, Sign opp_sign) const {
-    int score = 0;
-    int win_len = state.get_opts().win_len;
-    const int dirs[4][2] = {{1, 0}, {0, 1}, {1, 1}, {1, -1}};
+const char* MyPlayer::get_name() const { 
+    return player_id; 
+}
 
-    for (int i = 0; i < 4; ++i) {
-        int dx = dirs[i][0];
-        int dy = dirs[i][1];
-
-        int my_len = 1 + count_in_dir(state, x, y, dx, dy, my_sign)
-                       + count_in_dir(state, x, y, -dx, -dy, my_sign);
-
-        int opp_len = 1 + count_in_dir(state, x, y, dx, dy, opp_sign)
-                         + count_in_dir(state, x, y, -dx, -dy, opp_sign);
-
-        if (my_len >= win_len) score += 100000;
-        if (opp_len >= win_len) score += 50000;
-        if (my_len == win_len - 1) score += 5000;
-        if (my_len == win_len - 2) score += 500;
-        if (opp_len == win_len - 1) score += 4000;
-        if (opp_len == win_len - 2) score += 400;
+int MyPlayer::scan_direction(const State& state, int col, int row, int step_x, int step_y, Sign target) const {
+    int counter = 0;
+    int needed = state.get_opts().win_len;
+    
+    for (int step = 1; step < needed; ++step) {
+        int new_col = col + step_x * step;
+        int new_row = row + step_y * step;
         
-        score += my_len * 10;
-        score += opp_len * 5;
+        if (new_col < 0 || new_row < 0 || 
+            new_col >= state.get_opts().cols || 
+            new_row >= state.get_opts().rows) {
+            break;
+        }
+        
+        if (state.get_value(new_col, new_row) == target) {
+            ++counter;
+        } else {
+            break;
+        }
     }
-    return score;
+    return counter;
 }
 
-Point MyPlayer::make_move(const State& state) {
-    int max_score = -1;
-    Point best_move = {0, 0};
-    int cols = state.get_opts().cols;
-    int rows = state.get_opts().rows;
-    Sign opp_sign = (m_sign == Sign::X) ? Sign::O : Sign::X;
+int MyPlayer::rank_position(const State& state, int col, int row, Sign me, Sign enemy) const {
+    int total_score = 0;
+    int win_len = state.get_opts().win_len;
+    const int directions[4][2] = {{1, 0}, {0, 1}, {1, 1}, {1, -1}};
 
-    for (int y = 0; y < rows; ++y) {
-        for (int x = 0; x < cols; ++x) {
-            if (state.get_value(x, y) != Sign::NONE)
+    for (int d = 0; d < 4; ++d) {
+        int dx = directions[d][0];
+        int dy = directions[d][1];
+
+        int my_streak = 1 + scan_direction(state, col, row, dx, dy, me)
+                           + scan_direction(state, col, row, -dx, -dy, me);
+
+        int enemy_streak = 1 + scan_direction(state, col, row, dx, dy, enemy)
+                             + scan_direction(state, col, row, -dx, -dy, enemy);
+
+        // Критические ситуации
+        if (my_streak >= win_len) total_score += 100000;
+        if (enemy_streak >= win_len) total_score += 50000;
+        
+        // Опасные приближения
+        if (my_streak == win_len - 1) total_score += 5000;
+        if (my_streak == win_len - 2) total_score += 500;
+        if (enemy_streak == win_len - 1) total_score += 4000;
+        if (enemy_streak == win_len - 2) total_score += 400;
+        
+        // Базовые очки
+        total_score += my_streak * 10;
+        total_score += enemy_streak * 5;
+    }
+    return total_score;
+}
+
+Point MyPlayer::make_move(const State& game_state) {
+    int best_value = -1;
+    Point chosen = {0, 0};
+    int width = game_state.get_opts().cols;
+    int height = game_state.get_opts().rows;
+    Sign opponent = (player_sign == Sign::X) ? Sign::O : Sign::X;
+
+    for (int row = 0; row < height; ++row) {
+        for (int col = 0; col < width; ++col) {
+            if (game_state.get_value(col, row) != Sign::NONE) {
                 continue;
+            }
 
-            int score = evaluate_cell(state, x, y, m_sign, opp_sign);
+            int current_rank = rank_position(game_state, col, row, player_sign, opponent);
 
-            if (score > max_score) {
-                max_score = score;
-                best_move = {x, y};
+            if (current_rank > best_value) {
+                best_value = current_rank;
+                chosen = {col, row};
             }
         }
     }
-    return best_move;
+    return chosen;
 }
 
 }
