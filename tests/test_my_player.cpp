@@ -1,37 +1,105 @@
-#include "player/my_observer.hpp"
 #include "player/my_player.hpp"
-
-
-#include <cstdio>
-#include <cstdlib>
+#include "core/game.hpp"
 #include <iostream>
-#include <iomanip>
 
-int main(int argc, char *argv[]) {
-  std::cout << "Hello!\n";
-  if (argc >= 2) {
-    std::srand(atoi(argv[1]));
-  }
+using namespace ttt;
 
-  ttt::game::State::Opts opts;
-  opts.rows = opts.cols = 20;
-  opts.win_len = 20;
-  opts.max_moves = 0;
+bool check_coords(game::Point a, game::Point b) {
+    return (a.x == b.x) && (a.y == b.y);
+}
 
-  auto field_initializer = ttt::game::RandomObstaclesFI(0.75, 50, 1);
+void report(const char* case_name, bool status) {
+    std::cout << "Case " << case_name << ": ";
+    std::cout << (status ? "OK" : "FAIL") << std::endl;
+}
 
-  ttt::my_player::MyPlayer p1("p1");
-  ttt::my_player::MyPlayer p2("p2");
-  ttt::my_player::ConsoleWriter obs;
+int main() {
+    std::cout << "\nMyPlayer Verification\n\n";
 
-  ttt::game::Game game(opts, &field_initializer);
-  game.add_player(ttt::game::Sign::X, &p1);
-  game.add_player(ttt::game::Sign::O, &p2);
-  game.add_observer(&obs);
+    // Scenario A: Direct win opportunity
+    {
+        game::State::Opts config;
+        config.rows = 3;
+        config.cols = 3;
+        config.win_len = 3;
+        config.max_moves = 0;
+        
+        game::State field(config);
+        field.process_move(game::Sign::X, 0, 0);
+        field.process_move(game::Sign::O, 0, 1);
+        field.process_move(game::Sign::X, 1, 0);
 
-  obs.print_game_state(game.get_state());
-  while (game.process() == ttt::game::MoveResult::OK) {
-    obs.print_game_state(game.get_state());
-  }
-  obs.print_game_state(game.get_state());
+        my_player::MyPlayer agent("Verifier");
+        agent.set_sign(game::Sign::X);
+        
+        game::Point answer = {2, 0};
+        game::Point decision = agent.make_move(field);
+        report("win_in_one", check_coords(answer, decision));
+    }
+
+    // Scenario B: Prevent opponent victory
+    {
+        game::State::Opts config;
+        config.rows = 3;
+        config.cols = 3;
+        config.win_len = 3;
+        config.max_moves = 0;
+        
+        game::State field(config);
+        field.process_move(game::Sign::X, 0, 0);
+        field.process_move(game::Sign::O, 0, 1);
+        field.process_move(game::Sign::X, 2, 2);
+        field.process_move(game::Sign::O, 1, 1);
+
+        my_player::MyPlayer agent("Verifier");
+        agent.set_sign(game::Sign::X);
+        
+        game::Point answer = {2, 1};
+        game::Point decision = agent.make_move(field);
+        report("block_threat", check_coords(answer, decision));
+    }
+
+    // Scenario C: Build own formation
+    {
+        game::State::Opts config;
+        config.rows = 5;
+        config.cols = 5;
+        config.win_len = 5;
+        config.max_moves = 0;
+        
+        game::State field(config);
+        field.process_move(game::Sign::X, 0, 0);
+        field.process_move(game::Sign::O, 0, 1);
+        field.process_move(game::Sign::X, 1, 0);
+        field.process_move(game::Sign::O, 3, 0);
+        
+        my_player::MyPlayer agent("Verifier");
+        agent.set_sign(game::Sign::X);
+        
+        game::Point movement = agent.make_move(field);
+        bool correct = (movement.x == 2 && movement.y == 0);
+        report("extend_line", correct);
+    }
+
+    // Scenario D: Opening move
+    {
+        game::State::Opts config;
+        config.rows = 5;
+        config.cols = 5;
+        config.win_len = 4;
+        config.max_moves = 0;
+        
+        game::State field(config);
+        
+        my_player::MyPlayer agent("Verifier");
+        agent.set_sign(game::Sign::X);
+        
+        game::Point movement = agent.make_move(field);
+        bool valid = (movement.x >= 0 && movement.x < 5 && 
+                      movement.y >= 0 && movement.y < 5);
+        report("first_move_valid", valid);
+    }
+
+    std::cout << "\nVerification Complete\n";
+    return 0;
 }
